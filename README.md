@@ -12,6 +12,7 @@ I as well added a Recording Time where if needed you can define a start and stop
 - Select Recording Duration (Minutes) (1 to 120)
 - If you plan to keep OBS running 24/7 set the Recording Start Time and End Time for video files.
 - Check Include Stream if you would like both Streaming and Recording to have a set time.
+- Set Days to avoid recording. e.g. [Wed Thu] will avoid Wed & Thu)
 - Debug Mode is simply there to watch the script and get a feel of how OBS works with scripting.
 This is my very first usage of Python so the code is a bit sloppy,
 By default the script disabled itself every time OBS is loaded.
