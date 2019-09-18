@@ -55,9 +55,17 @@ def script_description():
 		"<br/>" + \
 		"Set Start and Stop times for both recording / streaming." + \
 		"<br/>" + \
+		"Set Days to avoid recording. e.g. [Wed Thu] will avoid Wed & Thu)" + \
+		"<br/>" + \
 		"Simple Debug Mode to watch how scripts work in OBS." + \
 		"<br/><br/>" + \
 		"Made by Jeff Mathewson, © 2018" + \
+		"<br/><br/>" + \
+		"Modified by Moni Gill, © 2019" + \
+		"<br/>" + \
+		"Added:" + \
+		"<br/>" + \
+		"- Avoid Recording Day(s)." + \
 		"<hr>"
 
 def script_load(settings):
@@ -77,6 +85,7 @@ def script_properties():
 	st = obs.obs_properties_add_list(props, "start_time", "Record Start Time", obs.OBS_COMBO_TYPE_LIST , obs.OBS_COMBO_FORMAT_STRING)
 	obs.obs_property_list_add_string(st, "None", "None")
 	et = obs.obs_properties_add_list(props, "end_time", "Record End Time", obs.OBS_COMBO_TYPE_LIST , obs.OBS_COMBO_FORMAT_STRING)
+	dy = obs.obs_properties_add_list(props, "avoid_days", "Avoid Recording Day(s)", obs.OBS_COMBO_TYPE_EDITABLE, obs.OBS_COMBO_FORMAT_STRING)
 	for x in range(96):
 		obs.obs_property_list_add_string(st, str(datetime.time(now).strftime( "%I:%M %p")), str(datetime.time(now)))
 		obs.obs_property_list_add_string(et, str(datetime.time(now).strftime( "%I:%M %p")), str(datetime.time(now)))
@@ -110,10 +119,12 @@ def script_update(settings):
 	global Recording_Timer
 	global Recording_End
 	global Time_To_Record
+	global Avoid_These_Days
 
 	if obs.obs_data_get_bool(settings, "enabled") is not Enabled_Recording:
 		if obs.obs_data_get_bool(settings, "enabled") is True:
 			if Debug_Mode: print("Loading Timer")
+			print("timer_check_recording(): [{}] vs [{}]" . format(str(datetime.today().strftime("%a")), Avoid_These_Days))
 
 			Enabled_Recording = True
 			obs.timer_add(timer_check_recording,30000)
@@ -142,6 +153,14 @@ def script_update(settings):
 		Enabled_Streaming = False
 	else:
 		Recording_End = obs.obs_data_get_string(settings, "end_time")
+
+	if obs.obs_data_get_string(settings, "avoid_days") == "":
+		Avoid_These_Days = "Sat Sun"
+		obs.obs_data_set_bool(settings, "enabled_stream", False)
+		Enabled_Streaming = False
+	else:
+		Avoid_These_Days = obs.obs_data_get_string(settings, "avoid_days")
+
 	Debug_Mode = obs.obs_data_get_bool(settings, "debug_mode")
 	Enabled_Streaming = obs.obs_data_get_bool(settings, "enabled_stream")
 
@@ -166,14 +185,15 @@ def timer_check_recording():
 	if Enabled_Recording and Recording_Start is not "None":
 		if int(Recording_Start[:2]) <= int(Recording_End[:2]):
 			if Debug_Mode: print("Normal Time")
-			Recording_Active = time.strftime("%H:%M") >= Recording_Start and time.strftime("%H:%M") <= Recording_End
+			print("timer_check_recording(): [{}] vs [{}]" . format(str(datetime.today().strftime("%a")), Avoid_These_Days))
+			Recording_Active = time.strftime("%H:%M") >= Recording_Start and time.strftime("%H:%M") <= Recording_End and str(datetime.today().strftime("%a")) not in Avoid_These_Days
 		else:
 			if Debug_Mode: print("Backwards Time")
 			Recording_Active = not (time.strftime("%H:%M") <= Recording_Start and time.strftime("%H:%M") >= Recording_End)
 
 		if Recording_Active:
 			if obs.obs_frontend_recording_active():
-				if time.time() >= Time_To_Record:
+				if time.time() >= Time_To_Record and str(datetime.today().strftime("%a")) in Avoid_These_Days:
 					if Debug_Mode: print("I'm going to stop recording now")
 					obs.obs_frontend_recording_stop()
 					obs.timer_add(timer_start_recording, Pause_Time)
